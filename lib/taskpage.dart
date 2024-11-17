@@ -7,7 +7,8 @@ class TaskPage extends StatefulWidget {
 }
 
 class _TaskPageState extends State<TaskPage> {
-  final TextEditingController taskController = TextEditingController();
+  final _titleController = TextEditingController();
+  DateTime? _selectedDueDate;
   List<ParseObject> tasks = [];
 
   @override
@@ -30,19 +31,50 @@ class _TaskPageState extends State<TaskPage> {
       }
     }
   }
+   void _pickDueDate() async {
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(Duration(days: 365)),
+    );
 
-  Future<void> addTask(String title) async {
+    if (pickedDate != null) {
+      setState(() {
+        _selectedDueDate = pickedDate;
+      });
+    }
+  }
+  void _submitTask() {
+    final title = _titleController.text;
+
+    if (title.isEmpty || _selectedDueDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please provide both title and due date.')),
+      );
+      return;
+    }
+
+    addTask(title, _selectedDueDate!).then((_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Task added successfully!')),
+      );
+      //Navigator.pop(context); // Return to the previous screen
+    });
+  }
+  Future<void> addTask(String title,DateTime dueDate) async {
     final user = await ParseUser.currentUser() as ParseUser?;
     if (user != null) {
       final task = ParseObject('Task')
         ..set('title', title)
-        ..set('isCompleted', false)
+        ..set('dueDate', dueDate)
+        ..set('isCompleted', true)
         ..set('user', user);
 
       final response = await task.save();
       if (response.success) {
         fetchTasks(); // Refresh the task list
-        taskController.clear();
+        //taskController.clear();
       }
     }
   }
@@ -85,24 +117,32 @@ class _TaskPageState extends State<TaskPage> {
         children: [
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Row(
+            child: Column(
+          children: [
+            TextField(
+              controller: _titleController,
+              decoration: InputDecoration(labelText: 'Task Title'),
+            ),
+            SizedBox(height: 20),
+            Row(
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: taskController,
-                    decoration: InputDecoration(labelText: 'New Task'),
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.add),
-                  onPressed: () {
-                    if (taskController.text.isNotEmpty) {
-                      addTask(taskController.text.trim());
-                    }
-                  },
+                Text(_selectedDueDate == null
+                    ? 'No Due Date Selected'
+                    : 'Due Date: ${_selectedDueDate!.toLocal()}'),
+                Spacer(),
+                TextButton(
+                  onPressed: _pickDueDate,
+                  child: Text('Pick Date'),
                 ),
               ],
             ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _submitTask,
+              child: Text('Add Task'),
+            ),
+          ],
+        ),
           ),
           Expanded(
             child: ListView.builder(
@@ -138,4 +178,6 @@ class _TaskPageState extends State<TaskPage> {
       ),
     );
   }
+
+
 }
