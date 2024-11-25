@@ -30,6 +30,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'QuickTask',
       theme: ThemeData(primarySwatch: Colors.blue),
+      debugShowCheckedModeBanner: false,
       home: initialPage,
     );
   }
@@ -72,6 +73,7 @@ class AuthenticationPage extends StatefulWidget {
 class _AuthenticationPageState extends State<AuthenticationPage> {
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
 
   Future<void> signUp() async {
     final user = ParseUser(
@@ -130,6 +132,32 @@ class _AuthenticationPageState extends State<AuthenticationPage> {
   }
 }
 
+  Future<void> resetPassword(String email) async {
+  final response = await ParseUser(null, null, email).requestPasswordReset();
+
+  if (response.success) {
+    print('Password reset email sent successfully!');
+  } else {
+    print('Error: ${response.error?.message}');
+  }
+  }
+  void _resetPassword() async {
+    final email = _emailController.text.trim();
+
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter your email')),
+      );
+      return;
+    }
+
+    await resetPassword(email);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('If the email exists, a reset link was sent')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -148,6 +176,20 @@ class _AuthenticationPageState extends State<AuthenticationPage> {
               decoration: InputDecoration(labelText: 'Password'),
               obscureText: true,
             ),
+            TextField(
+              controller: _emailController,
+              decoration: InputDecoration(
+                labelText: 'Email',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _resetPassword,
+                      child: Text('Send Reset Link'),
+                    ),
+                  ),
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: signUp,
@@ -161,5 +203,7 @@ class _AuthenticationPageState extends State<AuthenticationPage> {
         ),
       ),
     );
+    
+    
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk_flutter.dart';
 import './main.dart';
+
 class TaskPage extends StatefulWidget {
   @override
   _TaskPageState createState() => _TaskPageState();
@@ -21,6 +22,7 @@ class _TaskPageState extends State<TaskPage> {
     final user = await ParseUser.currentUser() as ParseUser?;
     if (user != null) {
       final query = QueryBuilder<ParseObject>(ParseObject('Task'))
+        ..orderByAscending('dueDate')
         ..whereEqualTo('user', user);
 
       final response = await query.query();
@@ -31,7 +33,8 @@ class _TaskPageState extends State<TaskPage> {
       }
     }
   }
-   void _pickDueDate() async {
+
+  void _pickDueDate() async {
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
@@ -45,6 +48,7 @@ class _TaskPageState extends State<TaskPage> {
       });
     }
   }
+
   void _submitTask() {
     final title = _titleController.text;
 
@@ -62,13 +66,14 @@ class _TaskPageState extends State<TaskPage> {
       //Navigator.pop(context); // Return to the previous screen
     });
   }
-  Future<void> addTask(String title,DateTime dueDate) async {
+
+  Future<void> addTask(String title, DateTime dueDate) async {
     final user = await ParseUser.currentUser() as ParseUser?;
     if (user != null) {
       final task = ParseObject('Task')
         ..set('title', title)
         ..set('dueDate', dueDate)
-        ..set('isCompleted', true)
+        ..set('isCompleted', false)
         ..set('user', user);
 
       final response = await task.save();
@@ -98,7 +103,7 @@ class _TaskPageState extends State<TaskPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('My Tasks'),
+        title: Text('My Tasks', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: Icon(Icons.logout),
@@ -118,66 +123,89 @@ class _TaskPageState extends State<TaskPage> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
-          children: [
-            TextField(
-              controller: _titleController,
-              decoration: InputDecoration(labelText: 'Task Title'),
-            ),
-            SizedBox(height: 20),
-            Row(
               children: [
-                Text(_selectedDueDate == null
-                    ? 'No Due Date Selected'
-                    : 'Due Date: ${_selectedDueDate!.toLocal()}'),
-                Spacer(),
-                TextButton(
-                  onPressed: _pickDueDate,
-                  child: Text('Pick Date'),
+                TextField(
+                  controller: _titleController,
+                  decoration: InputDecoration(labelText: 'Task Title'),
+                ),
+                SizedBox(height: 20),
+                Row(
+                  children: [
+                    Text(_selectedDueDate == null
+                        ? 'No Due Date Selected'
+                        : 'Due Date: ${_selectedDueDate!.toLocal()}'),
+                    Spacer(),
+                    TextButton(
+                      onPressed: _pickDueDate,
+                      child: Text('Pick Date'),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: _submitTask,
+                  child: Text('Add Task'),
                 ),
               ],
             ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _submitTask,
-              child: Text('Add Task'),
-            ),
-          ],
-        ),
           ),
           Expanded(
-            child: ListView.builder(
-              itemCount: tasks.length,
-              itemBuilder: (context, index) {
-                final task = tasks[index];
-                return ListTile(
-                  title: Text(
-                    task.get<String>('title') ?? '',
-                    style: TextStyle(
-                      decoration: (task.get<bool>('isCompleted') ?? false)
-                          ? TextDecoration.lineThrough
-                          : null,
+            child: tasks.isEmpty
+                ? Center(
+                    child: Text(
+                      'No tasks yet. Add some!',
+                      style: TextStyle(fontSize: 18, color: Colors.grey),
                     ),
-                  ),
-                  leading: Checkbox(
-                    value: task.get<bool>('isCompleted') ?? false,
-                    onChanged: (value) {
-                      toggleTaskStatus(task);
+                  )
+                : ListView.builder(
+                    itemCount: tasks.length,
+                    itemBuilder: (context, index) {
+                      final task = tasks[index];
+                      final dueDate = task.get<DateTime>('dueDate');
+                      final formattedDueDate = dueDate != null
+                          ? '${dueDate.day}/${dueDate.month}/${dueDate.year}'
+                          : 'No Due Date';
+                      return Card(
+                          margin:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          elevation: 3,
+                          child: ListTile(
+                            title: Text(
+                              task.get<String>('title') ?? '',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                decoration:
+                                    (task.get<bool>('isCompleted') ?? false)
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                              ),
+                            ),
+                            subtitle: Text(
+                              'Due: $formattedDueDate',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 14,
+                              ),
+                            ),
+                            leading: Checkbox(
+                              value: task.get<bool>('isCompleted') ?? false,
+                              onChanged: (value) {
+                                toggleTaskStatus(task);
+                              },
+                            ),
+                            trailing: IconButton(
+                              icon: Icon(Icons.delete, color: Colors.red),
+                              onPressed: () {
+                                deleteTask(task);
+                              },
+                            ),
+                          ));
                     },
                   ),
-                  trailing: IconButton(
-                    icon: Icon(Icons.delete),
-                    onPressed: () {
-                      deleteTask(task);
-                    },
-                  ),
-                );
-              },
-            ),
           ),
         ],
       ),
     );
   }
-
-
 }
