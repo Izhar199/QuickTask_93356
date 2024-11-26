@@ -1,4 +1,4 @@
-# flutter_application_2
+# QuickTask
 
 A new Flutter project.
 
