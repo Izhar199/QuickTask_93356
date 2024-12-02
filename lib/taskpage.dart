@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk_flutter.dart';
 import './main.dart';
+import './edittask.dart';
 
 class TaskPage extends StatefulWidget {
   @override
@@ -67,6 +68,18 @@ class _TaskPageState extends State<TaskPage> {
     });
   }
 
+  void _openEditTaskPage(ParseObject task) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => EditTaskPage(task: task)),
+    );
+
+    if (result == true) {
+      // Refresh the task list after editing
+      fetchTasks();
+    }
+  }
+
   Future<void> addTask(String title, DateTime dueDate) async {
     final user = await ParseUser.currentUser() as ParseUser?;
     if (user != null) {
@@ -79,7 +92,6 @@ class _TaskPageState extends State<TaskPage> {
       final response = await task.save();
       if (response.success) {
         fetchTasks(); // Refresh the task list
-        //taskController.clear();
       }
     }
   }
@@ -161,7 +173,7 @@ class _TaskPageState extends State<TaskPage> {
                     itemCount: tasks.length,
                     itemBuilder: (context, index) {
                       final task = tasks[index];
-                      final dueDate = task.get<DateTime>('dueDate');
+                      final dueDate = task.get<DateTime>('dueDate')?.toLocal();
                       final formattedDueDate = dueDate != null
                           ? '${dueDate.day}/${dueDate.month}/${dueDate.year}'
                           : 'No Due Date';
@@ -194,11 +206,23 @@ class _TaskPageState extends State<TaskPage> {
                                 toggleTaskStatus(task);
                               },
                             ),
-                            trailing: IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
-                              onPressed: () {
-                                deleteTask(task);
-                              },
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: Icon(Icons.edit),
+                                  onPressed: () {
+                                    _openEditTaskPage(
+                                        task); // Open edit task page
+                                  },
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.delete, color: Colors.red),
+                                  onPressed: () {
+                                    deleteTask(task); // Handle task deletion
+                                  },
+                                ),
+                              ],
                             ),
                           ));
                     },
